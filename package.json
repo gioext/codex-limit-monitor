@@ -1,0 +1,26 @@
+{
+  "name": "codex-limit-monitor",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "preview": "vite preview",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@lucide/svelte": "^1.24.0",
+    "@tauri-apps/api": "^2",
+    "svelte": "^5.55.1"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^7.0.0",
+    "@tauri-apps/cli": "^2",
+    "svelte-check": "^4.4.6",
+    "tslib": "^2.8.1",
+    "typescript": "~5.8.3",
+    "vite": "^8.0.5"
+  }
+}

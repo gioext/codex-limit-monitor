@@ -10,6 +10,15 @@ It shows:
 - The expiration date of each available reset
 - Automatic refresh every five minutes and manual refresh from the tray menu
 
+## Technology stack
+
+- [Tauri 2](https://tauri.app/) for the native macOS window, menu bar integration, and Rust backend
+- [Svelte 5](https://svelte.dev/) and TypeScript for the user interface
+- [Vite 8](https://vite.dev/) for frontend development and builds
+- Rust for local Codex communication and the reset-credit request
+
+Svelte and the Tauri CLI are project-local npm dependencies. You do not need to install either one globally.
+
 ## Requirements
 
 - macOS 11 or later

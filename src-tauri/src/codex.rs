@@ -6,6 +6,7 @@ use std::fs;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Write;
+use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 use std::process::Stdio;
@@ -277,20 +278,71 @@ fn fetch_reset_credit_details() -> Result<ResetDetails, String> {
 
 fn find_codex_binary() -> Option<PathBuf> {
     if let Some(path) = std::env::var_os("CODEX_BINARY").map(PathBuf::from) {
-        if path.is_file() {
+        if is_runnable_file(&path) {
             return Some(path);
         }
     }
 
+    if let Some(path) = find_in_path("codex") {
+        return Some(path);
+    }
+
     let home = dirs::home_dir()?;
-    [
+    let mut candidates = vec![
         home.join(".local/bin/codex"),
         home.join(".codex/packages/standalone/current/bin/codex"),
         PathBuf::from("/opt/homebrew/bin/codex"),
         PathBuf::from("/usr/local/bin/codex"),
-    ]
-    .into_iter()
-    .find(|path| path.is_file())
+        PathBuf::from("/Applications/ChatGPT.app/Contents/Resources/codex"),
+    ];
+
+    append_fnm_candidates(
+        &mut candidates,
+        &home.join(".local/share/fnm/node-versions"),
+    );
+    append_fnm_candidates(&mut candidates, &home.join(".local/state/fnm_multishells"));
+
+    candidates.into_iter().find(|path| is_runnable_file(path))
+}
+
+fn find_in_path(command: &str) -> Option<PathBuf> {
+    let path = std::env::var_os("PATH")?;
+
+    std::env::split_paths(&path)
+        .map(|directory| directory.join(command))
+        .find(|path| is_runnable_file(path))
+}
+
+fn append_fnm_candidates(candidates: &mut Vec<PathBuf>, root: &Path) {
+    let Ok(entries) = fs::read_dir(root) else {
+        return;
+    };
+
+    for entry in entries.flatten() {
+        let directory = entry.path();
+        candidates.push(directory.join("installation/bin/codex"));
+        candidates.push(directory.join("bin/codex"));
+    }
+}
+
+fn is_runnable_file(path: &Path) -> bool {
+    if !path.is_file() {
+        return false;
+    }
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+
+        return fs::metadata(path)
+            .map(|metadata| metadata.permissions().mode() & 0o111 != 0)
+            .unwrap_or(false);
+    }
+
+    #[cfg(not(unix))]
+    {
+        true
+    }
 }
 
 #[cfg(test)]

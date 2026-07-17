@@ -13,6 +13,7 @@ const WORKER_TICK_SECS: u64 = 10;
 
 struct AppState {
     last_fetch_time: SystemTime,
+    remaining_menu_item: tauri::menu::MenuItem<tauri::Wry>,
 }
 
 fn setup_window_position(app: &AppHandle) {
@@ -25,7 +26,12 @@ fn setup_window_position(app: &AppHandle) {
 
 async fn fetch_and_record(state: &Arc<Mutex<AppState>>) -> Result<codex::CodexLimitData, String> {
     let data = codex::fetch().await?;
-    state.lock().await.last_fetch_time = SystemTime::now();
+    let mut app_state = state.lock().await;
+    app_state.last_fetch_time = SystemTime::now();
+    app_state
+        .remaining_menu_item
+        .set_text(format!("残り利用率: {}%", data.remaining_percent))
+        .map_err(|error| format!("トレイメニューを更新できません: {error}"))?;
     Ok(data)
 }
 
@@ -47,8 +53,18 @@ pub fn run() {
             let handle = app.handle().clone();
             setup_window_position(&handle);
 
+            use tauri::menu::Menu;
+            use tauri::menu::MenuItem;
+            use tauri::tray::MouseButton;
+            use tauri::tray::MouseButtonState;
+            use tauri::tray::TrayIconBuilder;
+            use tauri::tray::TrayIconEvent;
+
+            let remaining =
+                MenuItem::with_id(app, "remaining", "残り利用率: 未取得", false, None::<&str>)?;
             let state = Arc::new(Mutex::new(AppState {
                 last_fetch_time: SystemTime::now(),
+                remaining_menu_item: remaining.clone(),
             }));
             app.manage(state.clone());
 
@@ -79,16 +95,9 @@ pub fn run() {
                 }
             });
 
-            use tauri::menu::Menu;
-            use tauri::menu::MenuItem;
-            use tauri::tray::MouseButton;
-            use tauri::tray::MouseButtonState;
-            use tauri::tray::TrayIconBuilder;
-            use tauri::tray::TrayIconEvent;
-
             let refresh = MenuItem::with_id(app, "refresh", "更新", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "終了", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&refresh, &quit])?;
+            let menu = Menu::with_items(app, &[&remaining, &refresh, &quit])?;
 
             TrayIconBuilder::new()
                 .icon(tauri::image::Image::from_bytes(include_bytes!(
